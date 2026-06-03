@@ -20,14 +20,11 @@ app.use(express.json());
 
 const SECRET = 'secret'; // ❌ Secret JWT faible (détecté par Semgrep rule: hardcoded-secret)
 
-// ❌ VULNÉRABILITÉ 1 : SQL Injection
-// Semgrep règle : node.js.injections.node-sqli-injection
 app.get('/products/search', (req, res) => {
-  const q = req.query.q;
-  // La concaténation directe permet des injections SQL
+  const q = String(req.query.q || '');
   const results = db.prepare(
-    `SELECT * FROM products WHERE name LIKE '%${q}%'`
-  ).all();
+    'SELECT * FROM products WHERE name LIKE ?'
+  ).all(`%${q}%`);
   res.json({ results });
 });
 
