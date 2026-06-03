@@ -61,7 +61,7 @@ echo 'const K = "AKIAIOSFODNN7EXAMPLE"' > test-secret.js
 git add test-secret.js && git commit -m "test" && git push
 ```
 Le job secret-scan doit echouer. Nettoyez et repoussez.
-
+ 
 ---
 
 ## Partie 4 — Dependabot (10 min)
