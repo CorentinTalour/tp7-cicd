@@ -1,0 +1,1 @@
+const K = "AKIAIOSFODNN7EXAMPLE";
