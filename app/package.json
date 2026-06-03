@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Application avec vulnérabilités intentionnelles pour CI/CD — Node.js 22 built-in SQLite",
   "scripts": {
-    "start": "node --no-warnings server.js",
+    "start": "node --env-file-if-exists=.env --no-warnings server.js",
     "test": "echo 'No tests yet' && exit 0"
   },
   "dependencies": {
