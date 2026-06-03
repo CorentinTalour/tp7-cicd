@@ -18,7 +18,10 @@ db.exec(`
 
 app.use(express.json());
 
-const SECRET = 'secret'; // ❌ Secret JWT faible (détecté par Semgrep rule: hardcoded-secret)
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 app.get('/products/search', (req, res) => {
   const q = String(req.query.q || '');
@@ -28,29 +31,77 @@ app.get('/products/search', (req, res) => {
   res.json({ results });
 });
 
-// ❌ VULNÉRABILITÉ 2 : JWT sans vérification d'algorithme
-// Semgrep règle : javascript.jsonwebtoken.security.jwt-none-alg
 app.post('/auth', (req, res) => {
   const { username } = req.body || {};
-  const token = jwt.sign({ username, role: 'user' }, SECRET);
-  // Pas d'algorithm: 'HS256' → alg:none possible
+  const token = jwt.sign({ username, role: 'user' }, SECRET, { algorithm: 'HS256' });
   res.json({ token });
 });
 
 app.get('/admin', (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Token requis' });
-  const decoded = jwt.verify(token, SECRET); // ❌ pas de { algorithms: ['HS256'] }
+  const decoded = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
   if (decoded.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   res.json({ secret: 'données admin' });
 });
 
-// ❌ VULNÉRABILITÉ 3 : eval() sur input utilisateur
-// Semgrep règle : javascript.lang.security.audit.eval-detected
+function calculateExpression(expression) {
+  const tokens = String(expression).match(/\d+(?:\.\d+)?|[()+\-*/]/g);
+  if (!tokens || tokens.join('') !== String(expression).replace(/\s+/g, '')) {
+    throw new Error('Expression invalide');
+  }
+
+  const precedence = { '+': 1, '-': 1, '*': 2, '/': 2 };
+  const values = [];
+  const operators = [];
+
+  const applyOperator = () => {
+    const operator = operators.pop();
+    const right = values.pop();
+    const left = values.pop();
+    if (left === undefined || right === undefined) throw new Error('Expression invalide');
+    if (operator === '+') values.push(left + right);
+    if (operator === '-') values.push(left - right);
+    if (operator === '*') values.push(left * right);
+    if (operator === '/') values.push(left / right);
+  };
+
+  for (const token of tokens) {
+    if (/^\d/.test(token)) {
+      values.push(Number(token));
+    } else if (token === '(') {
+      operators.push(token);
+    } else if (token === ')') {
+      while (operators.length && operators[operators.length - 1] !== '(') applyOperator();
+      if (operators.pop() !== '(') throw new Error('Expression invalide');
+    } else {
+      while (
+        operators.length &&
+        operators[operators.length - 1] !== '(' &&
+        precedence[operators[operators.length - 1]] >= precedence[token]
+      ) {
+        applyOperator();
+      }
+      operators.push(token);
+    }
+  }
+
+  while (operators.length) {
+    if (operators[operators.length - 1] === '(') throw new Error('Expression invalide');
+    applyOperator();
+  }
+
+  if (values.length !== 1 || !Number.isFinite(values[0])) throw new Error('Expression invalide');
+  return values[0];
+}
+
 app.post('/compute', (req, res) => {
-  const { expression } = req.body;
-  const result = eval(expression); // ← Semgrep doit détecter ceci
-  res.json({ result });
+  try {
+    const result = calculateExpression(req.body?.expression);
+    res.json({ result });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
