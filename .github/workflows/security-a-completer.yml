@@ -1,0 +1,53 @@
+# TP 7 — Workflow a completer
+# Completez les sections marquees # TODO
+
+name: Security Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sast:
+    name: SAST — Semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Semgrep
+        run: pip install semgrep
+      - name: Run Semgrep
+        # TODO: commande semgrep avec p/javascript, p/nodejs et --error
+        run: semgrep --config=p/javascript --config=p/nodejs --config=p/security-audit --error .
+        working-directory: ./app
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        working-directory: ./app
+        # TODO: npm ci (pas npm install)
+        run: npm ci
+      - name: Audit dependencies
+        working-directory: ./app
+        # TODO: npm audit avec --audit-level=high
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # TODO: ajouter l'action gitleaks/gitleaks-action@v2
+      - name: Run gitleaks
+        run: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

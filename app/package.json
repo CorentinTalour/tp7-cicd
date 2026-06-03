@@ -1,0 +1,14 @@
+{
+  "name": "tp7-app",
+  "version": "1.0.0",
+  "description": "Application avec vulnérabilités intentionnelles pour CI/CD — Node.js 22 built-in SQLite",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "echo 'No tests yet' && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "engines": { "node": ">=22.5.0" }
+}
